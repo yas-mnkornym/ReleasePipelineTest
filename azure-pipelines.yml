@@ -58,7 +58,7 @@ stages:
           gitHubConnection: 'github.com_yas-mnkornym'
           repositoryName: 'yas-mnkornym/ReleasePipelineTest'
           action: 'delete'
-          tag: '$(appVersion)'
+          tag: 'v$(appVersion)'
 
       - task: GitHubRelease@1
         continueOnError: true
