@@ -1,0 +1,73 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+    include:
+    - master
+
+pr: none
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildPackages
+    
+    pool:
+      vmImage: "windows-latest"
+
+    steps:
+    - publish: $(Build.SourcesDirectory)
+      artifact: AnizanHelper
+      displayName: 'Publish artifacts'
+
+- stage: Publish
+  dependsOn:
+  - Build
+  condition: succeeded()
+  jobs:
+  - job: PublishAppPackage
+    pool:
+      vmImage: "windows-latest"
+    steps:
+      - checkout: none
+      
+      - download: current
+        artifact: AnizanHelper
+        displayName: "Download artifact"
+
+      - task: PowerShell@2
+        inputs:
+          targetType: 'inline'
+          script: |
+            $version = cat "$(Pipeline.Workspace)/AnizanHelper/readme.md"
+            echo "##vso[task.setvariable variable=AppVersion]$version"
+            mv "$(Pipeline.Workspace)/version.txt"
+
+      - task: ArchiveFiles@2
+        inputs:
+          rootFolderOrFile: "$(Pipeline.Workspace)/AnizanHelper"
+          includeRootFolder: false
+          archiveType: "zip"
+          archiveFile: "AnizanHelper_$(AppVersion).zip"
+          replaceExistingArchive: true
+
+      - task: GitHubRelease@1
+        continueOnError: true
+        inputs:
+          gitHubConnection: 'github.com_yas-mnkornym'
+          repositoryName: 'yas-mnkornym/ReleasePipelineTest'
+          action: 'create'
+          target: '$(Build.SourceVersion)'
+          tagSource: 'userSpecifiedTag'
+          tag: 'v$(appVersion)'
+          title: 'Release-$(appVersion)'
+          releaseNotesSource: 'inline'
+          releaseNotesInline: 'test'
+          assets: 'AnizanHelper_$(AppVersion).zip'
+          isDraft: true
+          changeLogCompareToRelease: 'lastFullRelease'
+          changeLogType: 'commitBased'
+
